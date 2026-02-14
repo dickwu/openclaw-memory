@@ -1,0 +1,39 @@
+name: memory
+description: GraphRAG-based memory storage and retrieval for OpenClaw
+version: 0.1.0
+
+commands:
+  remember:
+    description: Store a new memory with entity extraction
+    usage: "remember <content>"
+    example: "remember Peilin's birthday is December 15th"
+    
+  recall:
+    description: Query memories semantically
+    usage: "recall <query>"
+    example: "recall what do you know about birthdays"
+    
+  memories:
+    description: List all memories
+    usage: "memories [--tag tag]"
+    example: "memories --tag important"
+    
+  graph:
+    description: Show knowledge graph
+    usage: "graph"
+    
+  explore:
+    description: Explore an entity in the knowledge graph
+    usage: "explore <entity-name>"
+    example: "explore Peilin"
+
+environment:
+  MEMORY_SERVER_URL:
+    default: "http://localhost:4801"
+    description: "URL of the memory server"
+  OPENAI_API_KEY:
+    default: ""
+    description: "OpenAI API key for semantic search (optional)"
+  MEMORY_DIR:
+    default: "/tmp/openclaw-memory"
+    description: "Directory to store memory files"
