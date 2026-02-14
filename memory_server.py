@@ -38,9 +38,23 @@ MEMORY_DIR = Path(os.getenv("MEMORY_DIR", "/tmp/openclaw-memory"))
 MEMORY_DIR.mkdir(parents=True, exist_ok=True)
 MEMORIES_FILE = MEMORY_DIR / "memories.json"
 GRAPH_FILE = MEMORY_DIR / "graph.json"
+CONFIG_FILE = MEMORY_DIR / "config.json"
+
+# Load config from file
+def load_config() -> dict:
+    """Load configuration from file"""
+    if CONFIG_FILE.exists():
+        try:
+            with open(CONFIG_FILE) as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Could not load config: {e}")
+    return {}
+
+config = load_config()
 
 # LLM configuration
-# Priority: env var > OpenClaw config > none
+# Priority: env var > config file > none
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 # Check common OpenRouter env vars (OpenClaw uses these)
@@ -49,7 +63,11 @@ for var in ["OPENROUTER_API_KEY", "OR_API_KEY"]:
     if not OPENROUTER_API_KEY:
         OPENROUTER_API_KEY = os.getenv(var, "")
 
-LLM_MODEL = os.getenv("LLM_MODEL", "openrouter/anthropic/claude-3.5-sonnet")
+# Also check config file
+if not OPENROUTER_API_KEY:
+    OPENROUTER_API_KEY = config.get("openrouter_api_key", "")
+
+LLM_MODEL = os.getenv("LLM_MODEL", config.get("llm_model", "openrouter/anthropic/claude-3.5-sonnet"))
 USE_OPENROUTER = bool(OPENROUTER_API_KEY)
 
 # --- Data Models ---
@@ -185,6 +203,8 @@ async def root():
             "GET /memories/{id}": "Get a specific memory",
             "POST /query": "Query memories semantically",
             "GET /graph": "Get knowledge graph",
+            "GET /config": "Get config (no secrets)",
+            "POST /config": "Set config (openrouter_api_key, llm_model)",
             "DELETE /memories": "Clear all memories"
         }
     }
@@ -454,6 +474,44 @@ async def explore_entity(entity_name: str):
         "relationships": relationships,
         "connected_entities": related_entities
     }
+
+# --- Config Operations ---
+
+class ConfigInput(BaseModel):
+    """Configuration input"""
+    openrouter_api_key: Optional[str] = None
+    llm_model: Optional[str] = None
+
+@app.get("/config")
+async def get_config():
+    """Get current config (without exposing secrets)"""
+    return {
+        "llm_model": LLM_MODEL,
+        "has_openrouter_key": bool(OPENROUTER_API_KEY),
+        "config_file": str(CONFIG_FILE)
+    }
+
+@app.post("/config")
+async def set_config(config_input: ConfigInput):
+    """Set configuration"""
+    config = {}
+    
+    # Load existing
+    if CONFIG_FILE.exists():
+        with open(CONFIG_FILE) as f:
+            config = json.load(f)
+    
+    # Update values
+    if config_input.openrouter_api_key:
+        config["openrouter_api_key"] = config_input.openrouter_api_key
+    if config_input.llm_model:
+        config["llm_model"] = config_input.llm_model
+    
+    # Save
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(config, f, indent=2)
+    
+    return {"saved": True, "config_file": str(CONFIG_FILE)}
 
 if __name__ == "__main__":
     import uvicorn
