@@ -40,8 +40,15 @@ MEMORIES_FILE = MEMORY_DIR / "memories.json"
 GRAPH_FILE = MEMORY_DIR / "graph.json"
 
 # LLM configuration
+# Priority: env var > OpenClaw config > none
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")  # Same as OpenClaw
+
+# Check common OpenRouter env vars (OpenClaw uses these)
+OPENROUTER_API_KEY = ""
+for var in ["OPENROUTER_API_KEY", "OR_API_KEY"]:
+    if not OPENROUTER_API_KEY:
+        OPENROUTER_API_KEY = os.getenv(var, "")
+
 LLM_MODEL = os.getenv("LLM_MODEL", "openrouter/anthropic/claude-3.5-sonnet")
 USE_OPENROUTER = bool(OPENROUTER_API_KEY)
 
