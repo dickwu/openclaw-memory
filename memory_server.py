@@ -41,7 +41,9 @@ GRAPH_FILE = MEMORY_DIR / "graph.json"
 
 # LLM configuration
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")  # Same as OpenClaw
+LLM_MODEL = os.getenv("LLM_MODEL", "openrouter/anthropic/claude-3.5-sonnet")
+USE_OPENROUTER = bool(OPENROUTER_API_KEY)
 
 # --- Data Models ---
 
@@ -107,14 +109,21 @@ def save_graph_data(graph_data: Dict[str, Any]) -> None:
 
 async def extract_entities_llm(content: str) -> tuple[List[Dict[str, str]], List[Dict[str, str]]]:
     """Use LLM to extract entities and relationships from content"""
-    if not OPENAI_API_KEY:
+    if not OPENAI_API_KEY and not OPENROUTER_API_KEY:
         return [], []
     
     try:
         from langchain_openai import ChatOpenAI
-        from langchain.prompts import PromptTemplate
         
-        llm = ChatOpenAI(model=LLM_MODEL, api_key=OPENAI_API_KEY)
+        # Use OpenRouter if API key is available
+        if USE_OPENROUTER:
+            llm = ChatOpenAI(
+                model=LLM_MODEL,
+                openai_api_key=OPENROUTER_API_KEY,
+                openai_api_base="https://openrouter.ai/api/v1"
+            )
+        else:
+            llm = ChatOpenAI(model=LLM_MODEL, api_key=OPENAI_API_KEY)
         
         # Prompt for entity extraction
         prompt = PromptTemplate(
@@ -159,6 +168,10 @@ async def root():
         "name": "OpenClaw Memory",
         "version": "0.1.0",
         "graphrag": GRAPHRAG_AVAILABLE,
+        "llm": {
+            "provider": "openrouter" if USE_OPENROUTER else "openai" if OPENAI_API_KEY else "none",
+            "model": LLM_MODEL
+        },
         "endpoints": {
             "POST /memories": "Store a new memory",
             "GET /memories": "List all memories",
@@ -186,7 +199,7 @@ async def add_memory(memory_input: MemoryInput):
     # Extract entities if LLM is available
     entities = []
     relationships = []
-    if OPENAI_API_KEY:
+    if OPENAI_API_KEY or OPENROUTER_API_KEY:
         entities, relationships = await extract_entities_llm(memory_input.content)
     
     memory = Memory(
@@ -295,12 +308,20 @@ async def query_memories(query: MemoryQuery):
         return {"results": [], "message": "No memories stored"}
     
     # If LLM available, use semantic search
-    if OPENAI_API_KEY and GRAPHRAG_AVAILABLE:
+    if (OPENAI_API_KEY or OPENROUTER_API_KEY) and GRAPHRAG_AVAILABLE:
         try:
             from langchain_openai import ChatOpenAI
             from langchain.schema import HumanMessage
             
-            llm = ChatOpenAI(model=LLM_MODEL, api_key=OPENAI_API_KEY)
+            # Use OpenRouter if available
+            if USE_OPENROUTER:
+                llm = ChatOpenAI(
+                    model=LLM_MODEL,
+                    openai_api_key=OPENROUTER_API_KEY,
+                    openai_api_base="https://openrouter.ai/api/v1"
+                )
+            else:
+                llm = ChatOpenAI(model=LLM_MODEL, api_key=OPENAI_API_KEY)
             
             # Get relevant context from graph
             graph_data = load_graph_data()

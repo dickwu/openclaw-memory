@@ -7,13 +7,22 @@ This skill provides graph-based memory storage and retrieval using GraphRAG conc
 1. Install dependencies:
 ```bash
 cd ~/opensource/openclaw-memory
-pip install -e .
+uv sync
 ```
 
-2. Set environment variables:
+2. Set environment variables (uses OpenRouter by default):
 ```bash
-export OPENAI_API_KEY="your-api-key"  # Optional: for semantic search
-export MEMORY_DIR="/path/to/memories"  # Optional: custom storage path
+# Use OpenRouter (recommended - same as OpenClaw)
+export OPENROUTER_API_KEY="your-openrouter-key"
+
+# Or use OpenAI (fallback)
+export OPENAI_API_KEY="your-openai-key"
+
+# Optional: customize model
+export LLM_MODEL="openrouter/anthropic/claude-3.5-sonnet"
+
+# Optional: custom storage path
+export MEMORY_DIR="/path/to/memories"
 ```
 
 3. Start the memory server:
