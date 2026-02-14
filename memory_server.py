@@ -34,7 +34,12 @@ except ImportError:
 app = FastAPI(title="OpenClaw Memory", version="0.1.0")
 
 # Configuration
-MEMORY_DIR = Path(os.getenv("MEMORY_DIR", "/tmp/openclaw-memory"))
+# Use OpenClaw's directory for config storage
+OPENCLAW_DIR = Path(os.getenv("OPENCLAW_DIR", str(Path.home() / ".openclaw")))
+MEMORY_SUBDIR = "memory"
+
+# Create memory subdirectory in OpenClaw dir
+MEMORY_DIR = OPENCLAW_DIR / MEMORY_SUBDIR
 MEMORY_DIR.mkdir(parents=True, exist_ok=True)
 MEMORIES_FILE = MEMORY_DIR / "memories.json"
 GRAPH_FILE = MEMORY_DIR / "graph.json"
